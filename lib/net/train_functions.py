@@ -39,7 +39,7 @@ def model_joint_fn_decorator():
         loss = 0
         if cfg.RPN.ENABLED and not cfg.RPN.FIXED:
             rpn_cls, rpn_reg = ret_dict['rpn_cls'], ret_dict['rpn_reg']
-            rpn_loss = get_rpn_loss(model, rpn_cls, rpn_reg, rpn_cls_label, rpn_reg_label, tb_dict)
+            rpn_loss = get_rpn_loss(model, rpn_cls, rpn_reg, rpn_cls_label, rpn_reg_label, tb_dict) # PRN Loss
             loss += rpn_loss
             disp_dict['rpn_loss'] = rpn_loss.item()
 

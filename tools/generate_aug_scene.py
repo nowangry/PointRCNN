@@ -316,6 +316,7 @@ if __name__ == '__main__':
         log_print('Loading gt_database(%d) from %s' % (gt_database.__len__(), args.gt_database_dir), fp=log_fp)
 
         dataset = AugSceneGenerator(root_dir='../data', gt_database=gt_database, split=args.split)
+        # dataset = AugSceneGenerator(root_dir=r'/data/dataset_wujunqi/', gt_database=gt_database, split=args.split) #改
         dataset.generate_aug_scene(aug_times=args.aug_times, log_fp=log_fp)
 
         log_fp.close()

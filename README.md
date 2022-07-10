@@ -1,7 +1,9 @@
 # PointRCNN
 
 ## PointRCNN: 3D Object Proposal Generation and Detection from Point Cloud
-![teaser](https://github.com/sshaoshuai/PointRCNN/blob/master/doc/teaser.png)
+
+[comment]: <> (![teaser]&#40;https://github.com/sshaoshuai/PointRCNN/blob/master/doc/teaser.png&#41;)
+![teaser](./doc/teaser.png)
 
 Code release for the paper **PointRCNN:3D Object Proposal Generation and Detection from Point Cloud**, CVPR 2019.
 

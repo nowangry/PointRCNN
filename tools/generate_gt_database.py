@@ -7,6 +7,7 @@ import torch
 import lib.utils.roipool3d.roipool3d_utils as roipool3d_utils
 from lib.datasets.kitti_dataset import KittiDataset
 import argparse
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_dir', type=str, default='./gt_database')
@@ -92,7 +93,7 @@ class GTDatabaseGenerator(KittiDataset):
 
 
 if __name__ == '__main__':
-    dataset = GTDatabaseGenerator(root_dir='../data/', split=args.split)
+    dataset = GTDatabaseGenerator(root_dir='/data/dataset_wujunqi/', split=args.split)
     os.makedirs(args.save_dir, exist_ok=True)
 
     dataset.generate_gt_database()

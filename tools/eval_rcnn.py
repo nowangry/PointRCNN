@@ -22,7 +22,8 @@ import time
 from tensorboardX import SummaryWriter
 import tqdm
 
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# python eval_rcnn.py --cfg_file=cfgs/default.yaml --ckpt=../model/PointRCNN.pth --batch_size=1 --eval_mode=rcnn --save_result --test --set RPN.LOC_XZ_FINE False
 np.random.seed(1024)  # set the same seed
 
 parser = argparse.ArgumentParser(description="arg parser")
@@ -843,7 +844,8 @@ def repeat_eval_ckpt(root_result_dir, ckpt_dir):
 
 def create_dataloader(logger):
     mode = 'TEST' if args.test else 'EVAL'
-    DATA_PATH = os.path.join('..', 'data')
+    # DATA_PATH = os.path.join('..', 'data')
+    DATA_PATH = r'/data/dataset_wujunqi/' # 改
 
     # create dataloader
     test_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TEST.SPLIT, mode=mode,

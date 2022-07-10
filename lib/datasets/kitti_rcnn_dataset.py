@@ -259,7 +259,8 @@ class KittiRCNNDataset(KittiDataset):
             # img = self.get_image(sample_id % 10000)
             img_shape = self.get_image_shape(sample_id % 10000)
 
-            pts_file = os.path.join(self.aug_pts_dir, '%06d.bin' % sample_id)
+            # pts_file = os.path.join(self.aug_pts_dir, '%06d.bin' % sample_id)
+            pts_file = os.path.join(self.aug_pts_dir, '%06d.bin' % (sample_id % 10000)) # 改
             assert os.path.exists(pts_file), '%s' % pts_file
             aug_pts = np.fromfile(pts_file, dtype=np.float32).reshape(-1, 4)
             pts_rect, pts_intensity = aug_pts[:, 0:3], aug_pts[:, 3]

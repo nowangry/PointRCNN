@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import argparse
 import logging
 from functools import partial
@@ -59,7 +60,8 @@ def create_logger(log_file):
 
 
 def create_dataloader(logger):
-    DATA_PATH = os.path.join('../', 'data')
+    # DATA_PATH = os.path.join('../', 'data')
+    DATA_PATH = r'/data/dataset_wujunqi/' # 改
 
     # create dataloader
     train_set = KittiRCNNDataset(root_dir=DATA_PATH, npoints=cfg.RPN.NUM_POINTS, split=cfg.TRAIN.SPLIT, mode='TRAIN',
