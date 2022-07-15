@@ -117,7 +117,7 @@ class RCNNNet(nn.Module):
         :param input_data: input dict
         :return:
         """
-        if cfg.RCNN.ROI_SAMPLE_JIT:
+        if cfg.RCNN.ROI_SAMPLE_JIT: # default: True
             if self.training:
                 with torch.no_grad():
                     target_dict = self.proposal_target_layer(input_data)
@@ -127,13 +127,13 @@ class RCNNNet(nn.Module):
             else:
                 rpn_xyz, rpn_features = input_data['rpn_xyz'], input_data['rpn_features']
                 batch_rois = input_data['roi_boxes3d']
-                if cfg.RCNN.USE_INTENSITY:
+                if cfg.RCNN.USE_INTENSITY: # default: False
                     pts_extra_input_list = [input_data['rpn_intensity'].unsqueeze(dim=2),
                                             input_data['seg_mask'].unsqueeze(dim=2)]
                 else:
                     pts_extra_input_list = [input_data['seg_mask'].unsqueeze(dim=2)]
 
-                if cfg.RCNN.USE_DEPTH:
+                if cfg.RCNN.USE_DEPTH: # default: True
                     pts_depth = input_data['pts_depth'] / 70.0 - 0.5
                     pts_extra_input_list.append(pts_depth.unsqueeze(dim=2))
                 pts_extra_input = torch.cat(pts_extra_input_list, dim=2)
@@ -164,7 +164,7 @@ class RCNNNet(nn.Module):
 
         xyz, features = self._break_up_pc(pts_input)
 
-        if cfg.RCNN.USE_RPN_FEATURES:
+        if cfg.RCNN.USE_RPN_FEATURES: # USE_RPN_FEATURES: True
             xyz_input = pts_input[..., 0:self.rcnn_input_channel].transpose(1, 2).unsqueeze(dim=3)
             xyz_feature = self.xyz_up_layer(xyz_input)
 

@@ -24,10 +24,11 @@ class PointRCNN(nn.Module):
                 raise NotImplementedError
 
     def forward(self, input_data):
+        is_adv_attack = ('adv' in cfg.TEST.SPLIT)
         if cfg.RPN.ENABLED:
             output = {}
             # rpn inference
-            with torch.set_grad_enabled((not cfg.RPN.FIXED) and self.training):
+            with torch.set_grad_enabled(((not cfg.RPN.FIXED) and self.training) or is_adv_attack):
                 if cfg.RPN.FIXED:
                     self.rpn.eval()
                 rpn_output = self.rpn(input_data)
@@ -35,7 +36,8 @@ class PointRCNN(nn.Module):
 
             # rcnn inference
             if cfg.RCNN.ENABLED:
-                with torch.no_grad():
+                # with torch.no_grad():
+                with torch.set_grad_enabled(is_adv_attack): # adv
                     rpn_cls, rpn_reg = rpn_output['rpn_cls'], rpn_output['rpn_reg']
                     backbone_xyz, backbone_features = rpn_output['backbone_xyz'], rpn_output['backbone_features']
 

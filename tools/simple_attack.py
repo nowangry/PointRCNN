@@ -2,6 +2,8 @@ import _init_path
 import os
 import numpy as np
 import torch
+torch.backends.cudnn.enabled = False # adv
+
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from lib.net.point_rcnn import PointRCNN
@@ -23,7 +25,10 @@ from tensorboardX import SummaryWriter
 import tqdm
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-# python eval_rcnn.py --cfg_file=cfgs/default.yaml --ckpt=../model/PointRCNN.pth --batch_size=1 --eval_mode=rcnn --save_result --test --set RPN.LOC_XZ_FINE False
+
+'''
+python simple_attack.py --cfg_file=cfgs/default.yaml --ckpt=../model/PointRCNN.pth --batch_size=1 --eval_mode=rcnn --save_result --test --set RPN.LOC_XZ_FINE False
+'''
 np.random.seed(1024)  # set the same seed
 
 parser = argparse.ArgumentParser(description="arg parser")
@@ -490,12 +495,15 @@ def eval_one_epoch_joint(model, dataloader, epoch_id, result_dir, logger):
             data['sample_id'], data['pts_rect'], data['pts_features'], data['pts_input']
         batch_size = len(sample_id)
         inputs = torch.from_numpy(pts_input).cuda(non_blocking=True).float()
+        # inputs = torch.from_numpy(pts_input)
+        # inputs = torch.tensor(inputs, dtype=torch.float).cuda(non_blocking=True)
+        inputs.requires_grad = True # adv
         input_data = {'pts_input': inputs}
 
         # model inference
         ret_dict = model(input_data)
 
-        roi_scores_raw = ret_dict['roi_scores_raw']  # (B, M)
+        roi_scores_raw = ret_dict['roi_scores_raw']  # (B, M), M = 100
         roi_boxes3d = ret_dict['rois']  # (B, M, 7)
         seg_result = ret_dict['seg_result'].long()  # (B, N)
 
@@ -517,16 +525,54 @@ def eval_one_epoch_joint(model, dataloader, epoch_id, result_dir, logger):
                                           get_ry_fine=True).view(batch_size, -1, 7)
 
         # scoring
+        # print("rcnn_cls.shape: {}".format(rcnn_cls.shape))
         if rcnn_cls.shape[2] == 1:
             raw_scores = rcnn_cls  # (B, M, 1)
 
             norm_scores = torch.sigmoid(raw_scores)
-            pred_classes = (norm_scores > cfg.RCNN.SCORE_THRESH).long()
+            pred_classes = (norm_scores > cfg.RCNN.SCORE_THRESH).long() # SCORE_THRESH: 0.3
         else:
             pred_classes = torch.argmax(rcnn_cls, dim=1).view(-1)
             cls_norm_scores = F.softmax(rcnn_cls, dim=1)
             raw_scores = rcnn_cls[:, pred_classes]
             norm_scores = cls_norm_scores[:, pred_classes]
+
+        # Attack -------------------------------------------------------------------
+        norm_roi_scores = torch.sigmoid(roi_scores_raw).float()
+        Z_rpn_objectScore = norm_roi_scores.unsqueeze(2).float()
+        # print("Z_rpn_objectScore.shape: {}".format(Z_rpn_objectScore.shape))
+        # print("Z_rpn_objectScore: {}".format(Z_rpn_objectScore))
+
+        Z_rcnn_bg = 0
+        Z_rcnn_t = rcnn_cls.float()
+
+        k_i = (norm_scores > 0.9).float()
+        if not k_i.sum() > 0:
+            continue
+        loss_adv_cls = (k_i.float() * (- Z_rpn_objectScore.float() - Z_rcnn_t.float())).sum().float()
+        print("sample_id:{}, k_i.sum(): {}, loss_adv_cls: {}".format(sample_id, k_i.sum(), loss_adv_cls))
+        model.zero_grad()
+        Epsilon = 0.1
+        # inputs = inputs.contiguous()
+        # loss_adv_cls = loss_adv_cls.contiguous()
+        # grad_inputs = torch.autograd.grad(loss_adv_cls.float(), inputs.float(), create_graph=True, allow_unused=True)
+        # adv_input = inputs + Epsilon * grad_inputs.sign()
+
+        loss_adv_cls.backward()
+        if inputs.grad == None:
+            continue
+        adv_inputs = inputs + Epsilon * inputs.grad.sign()
+
+        benign_pc_dir = r'/data/dataset_wujunqi/KITTI/object/training/velodyne'
+        adv_pc_dir = r'/data/dataset_wujunqi/KITTI/object/training/velodyne-adv'
+
+        for root, _, file_names in os.walk(benign_pc_dir):
+            pass
+        adv_pc_path = os.path.join(adv_pc_dir, file_names[sample_id] + '.bin')
+        adv_inputs.numpy().tofile(adv_pc_path) # 保存对抗点云
+
+        # Attack -------------------------------------------------------------------
+
 
         # evaluation
         recalled_num = gt_num = rpn_iou = 0
@@ -877,8 +923,10 @@ if __name__ == "__main__":
     elif args.eval_mode == 'rcnn':
         cfg.RCNN.ENABLED = True
         cfg.RPN.ENABLED = cfg.RPN.FIXED = True
-        root_result_dir = os.path.join('../', 'output', 'rcnn', cfg.TAG)
-        ckpt_dir = os.path.join('../', 'output', 'rcnn', cfg.TAG, 'ckpt')
+        # root_result_dir = os.path.join('../', 'output', 'rcnn', cfg.TAG)
+        # ckpt_dir = os.path.join('../', 'output', 'rcnn', cfg.TAG, 'ckpt')
+        root_result_dir = os.path.join('../', 'output-adv', 'rcnn', cfg.TAG)
+        ckpt_dir = os.path.join('../', 'output-adv', 'rcnn', cfg.TAG, 'ckpt')
     elif args.eval_mode == 'rcnn_offline':
         cfg.RCNN.ENABLED = True
         cfg.RPN.ENABLED = False
@@ -896,7 +944,9 @@ if __name__ == "__main__":
 
     os.makedirs(root_result_dir, exist_ok=True)
 
-    with torch.no_grad():
+    # with torch.no_grad(): #adv
+    is_adv_attack = ('adv' in cfg.TEST.SPLIT)
+    with torch.set_grad_enabled(is_adv_attack):
         if args.eval_all:
             assert os.path.exists(ckpt_dir), '%s' % ckpt_dir
             repeat_eval_ckpt(root_result_dir, ckpt_dir)
